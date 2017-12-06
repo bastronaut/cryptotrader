@@ -33,8 +33,15 @@ class poloniex:
         elif(command == "returnOrderBook"):
             ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + command + '&currencyPair=' + str(req['currencyPair'])))
             return json.loads(ret.read())
+
         elif(command == "returnMarketTradeHistory"):
-            ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(req['currencyPair'])))
+            if "startDate" in req and "endDate" in req:
+                ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + "returnTradeHistory" +
+                 '&currencyPair=' + str(req['currencyPair']) +
+                 '&start=' + str(req['startDate']) +
+                 '&end=' + str(req['endDate'])))
+            else:
+                ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(req['currencyPair'])))
             return json.loads(ret.read())
         else:
             req['command'] = command
@@ -52,6 +59,7 @@ class poloniex:
             return self.post_process(jsonRet)
 
 
+    # get all trade pairs
     def returnTicker(self):
         return self.api_query("returnTicker")
 
@@ -61,8 +69,14 @@ class poloniex:
     def returnOrderBook (self, currencyPair):
         return self.api_query("returnOrderBook", {'currencyPair': currencyPair})
 
-    def returnMarketTradeHistory (self, currencyPair):
-        return self.api_query("returnMarketTradeHistory", {'currencyPair': currencyPair})
+    # options args:
+    # currencyPair - mandatory - see returnTicker()
+    # startDate - optional but must be combined with endDate - UNIX epoch
+    # endDate - optional but must be combined with startDate if used - UNIX epoch
+    def returnMarketTradeHistory (self, options):
+        if "currencyPair" not in options:
+            return false
+        return self.api_query("returnMarketTradeHistory", options)
 
 
     # Returns all of your balances.

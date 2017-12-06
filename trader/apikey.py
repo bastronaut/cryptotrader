@@ -1,11 +1,11 @@
 
-class APIKey:
+class apikey:
     def __init__(self, APIkey, secret):
             self.APIkey = APIkey
             self.secret = secret
 
-    def getAPIkey(self):
+    def getkey(self):
         return self.APIkey
 
-    def getSecret(self):
+    def getsecret(self):
         return self.secret
