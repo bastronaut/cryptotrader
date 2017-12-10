@@ -35,14 +35,24 @@ class poloniex:
             return json.loads(ret.read())
 
         elif(command == "returnMarketTradeHistory"):
-            if "startDate" in req and "endDate" in req:
+            if "start" in req and "end" in req:
                 ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + "returnTradeHistory" +
                  '&currencyPair=' + str(req['currencyPair']) +
-                 '&start=' + str(req['startDate']) +
-                 '&end=' + str(req['endDate'])))
+                 '&start=' + str(req['start']) +
+                 '&end=' + str(req['end'])))
             else:
                 ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(req['currencyPair'])))
             return json.loads(ret.read())
+
+        elif(command == "returnChartData"):
+            ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + "returnChartData" +
+             '&currencyPair=' + str(req['currencyPair']) +
+             '&start=' + str(req['start']) +
+             '&end=' + str(req['end']) +
+             '&period=' + str(req['period'])))
+
+            return json.loads(ret.read())
+
         else:
             req['command'] = command
             req['nonce'] = int(time.time()*1000)
@@ -69,14 +79,32 @@ class poloniex:
     def returnOrderBook (self, currencyPair):
         return self.api_query("returnOrderBook", {'currencyPair': currencyPair})
 
-    # options args:
+
+    # Returns candlestick chart data. Required GET parameters are
+    # "currencyPair", "period" (candlestick period in seconds; valid values are
+    #  300, 900, 1800, 7200, 14400, and 86400), "start", and "end". "Start" and
+    #  "end" are given in UNIX timestamp format and used to specify the date
+    # range for the data returned. Sample output:
+    def returnChartData(self, currencyPair, period, start, end):
+        query = {
+        "currencyPair": currencyPair,
+        "period": period,
+        "start": start,
+        "end": end
+        }
+        return self.api_query("returnChartData", query)
+
+    # args:
     # currencyPair - mandatory - see returnTicker()
-    # startDate - optional but must be combined with endDate - UNIX epoch
-    # endDate - optional but must be combined with startDate if used - UNIX epoch
-    def returnMarketTradeHistory (self, options):
-        if "currencyPair" not in options:
-            return false
-        return self.api_query("returnMarketTradeHistory", options)
+    # start - optional but must be combined with end - UNIX epoch
+    # end - optional but must be combined with start if used - UNIX epoch
+    def returnMarketTradeHistory (self, currencyPair, start, end):
+        query = {
+        "currencyPair": currencyPair,
+        "start": start,
+        "end": end
+        }
+        return self.api_query("returnMarketTradeHistory", query)
 
 
     # Returns all of your balances.
