@@ -11,8 +11,10 @@ import time
 CURRENCYPAIR = "USDT_LTC"
 ONEWEEKSECONDS = 604800
 NROFWEEKS = 8
-DROPVALUE = 0.88
-GAINVALUE = 1.07
+DROPVALUE = 0.90
+GAINVALUE = 1.03
+BACKUPGAINVALUE = 1.01 # value that, if crossed by this value over most recente salesprice, will be bought in for again
+TRADINGFEE = 0.0025 # poloniex worst case fee
 
 def main():
     args = parser.parse_args()
@@ -32,41 +34,71 @@ def backtest(db):
     print len(ltclist)
 
     anchorprice = ltclist[0]['weightedAverage']
-    drop = anchorprice * DROPVALUE
-    increase = drop * GAINVALUE
+
+    lowestprice = anchorprice
+    saleprice = anchorprice * DROPVALUE # init, at this price, sell if holding
+    increase = saleprice * GAINVALUE # at this price, buy in again
+    backupincrease = saleprice * BACKUPGAINVALUE # at this price, buy in again if price went up over sales price
+
     sidelined = False
     usd = 0
     ltcqty = 1
-    print "starting LTC amount: {}".format(ltcqty)
-    print "starting USD amount: {}".format(usd)
-    print "anchorprice: {}, drop: {}, increase: {}".format(anchorprice, drop, increase)
+    feespaid = []
+    print "starting LTC amount: {}, starting USD amount: {}".format(ltcqty, usd)
+    print "anchorprice: {}, saleprice: {}, increase: {}, backupincrease: {}".format(anchorprice, saleprice, increase, backupincrease)
+
     for i in ltclist:
         curprice = i['weightedAverage']
+
+        if curprice < lowestprice:
+            lowestprice = curprice
+            increase = lowestprice * GAINVALUE
+
         if curprice > anchorprice:
             anchorprice = curprice
-            drop = anchorprice * DROPVALUE
-            increase = drop * GAINVALUE
-            # print "setting anchorprice: {} setting drop: {} setting increase {}".format(anchorprice, drop, increase)
+            saleprice = anchorprice * DROPVALUE
 
         if sidelined:
-            if curprice > increase:
-                ltcqty = usd / curprice
-                print "bought " + str(ltcqty) + " at price " + str(curprice)
+            if curprice > backupincrease:
+                '''Price over the top buy boundary, buy in again'''
+                ltcqty = (usd / curprice) * (1-TRADINGFEE)
+                fee = usd * TRADINGFEE
+                feespaid.append(fee)
+                print "bought {} at price {} for fee {} at backupprice".format(ltcqty, curprice, fee)
                 usd = 0
                 sidelined = False
                 anchorprice = curprice
-                drop = anchorprice * DROPVALUE
-                increase = drop * GAINVALUE
+                saleprice = anchorprice * DROPVALUE
+                increase = saleprice * GAINVALUE
+
+            elif curprice > increase:
+                '''Price over the bottom buy boundary, buy in again'''
+
+                ltcqty = (usd / curprice) * (1-TRADINGFEE)
+                fee = usd * TRADINGFEE
+                feespaid.append(fee)
+                print "bought {} at price {} for fee {} at increase price".format(ltcqty, curprice, fee)
+                usd = 0
+                sidelined = False
+                anchorprice = curprice
+                saleprice = anchorprice * DROPVALUE
+                increase = saleprice * GAINVALUE
+
 
 
 
 
         if not sidelined:
-            if curprice < drop:
-                usd = ltcqty * curprice
-                print "sold " + str(ltcqty) + " at price " + str(curprice)
+            if curprice < saleprice:
+                '''Price below sell threshold, sell'''
+                usd = (ltcqty * curprice) * (1-TRADINGFEE)
+                fee = (ltcqty * curprice) * TRADINGFEE
+                feespaid.append(fee)
+                print "sold {} at price {} for fee {}".format(ltcqty, curprice, fee)
                 ltcqty = 0
+                lowestprice = curprice
                 sidelined = True
+                backupincrease = curprice * BACKUPGAINVALUE
 
 
     print "Resulting ltc: " + str(ltcqty)
